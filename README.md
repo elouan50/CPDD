@@ -1,8 +1,26 @@
 # CPDD
 Contrastive Prototype Dataset Distillation
 
+## Introduction
+
+This project presents an implementation of the CPDD work of Elouan Colybes, M.Sc., and Shirin Salehi, Dr.-Ing., started in November 2025. Based on SimCLR [text](1). 
+
 ## Walkthrough
 You can find here a description of the structure of the project.
+
+```python
+├── examples            # Examples of project components
+│   ├── dinov3_task.py
+│   └── image.jpg
+├── src                 # Project core
+│   ├── augmentations   # Set of data augmentations
+│   ├── datasets        # Datasets for training
+│   ├── losses          # Loss functions
+│   ├── models          # Model architectures for teacher and client
+│   └── main.py
+├── README.md
+└── requirements.txt
+```
 
 ## First steps
 _Recommanded:_ use a Python virtual environment. To set up the environment, use the next commands:
@@ -12,3 +30,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 The first command will create a folder `venv` which contains the environment files. The second line activates the virtual environment (execute this one each time you reopen the project). The third line installs the package dependencies. To exit the virtual environment, use the `deactivate` command.
+
+## References
+
+[1]: Chen _et al._, 2020. A simple framework for contrastive learning of visual representations. In Proceedings of the 37th International Conference on Machine Learning (ICML'20), Vol. 119. JMLR.org, Article 149, 1597–1607.
