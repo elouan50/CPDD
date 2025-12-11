@@ -14,6 +14,9 @@ class InfoNCELoss(BaseModel):
     def compute_loss(self):
         M = len(self.embeddings) // 2
         t = self.temperature
+        
+        print(f"Number of prototypes (M): {M}")
+        print(f"Embeddings: {self.embeddings}")
                 
         loss = 0.0
         for i in range(M):
