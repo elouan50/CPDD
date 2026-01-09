@@ -19,5 +19,5 @@ if __name__ == "__main__":
     plt.imshow(image_with_boxes.permute(1, 2, 0))
     plt.show()
     print(prediction)
-    print([model.classes[predi] for predi in prediction["labels"].tolist()])
+    print([model.classes[predi.item()] for predi in prediction["labels"]])
         
