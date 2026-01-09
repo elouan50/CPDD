@@ -11,7 +11,6 @@ __pycache__/
 build/
 coco128_unlabeled/
 data/
-datasets/
 develop-eggs/
 dist/
 downloads/
