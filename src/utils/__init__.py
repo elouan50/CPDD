@@ -1,2 +1,2 @@
-from .training import TrainingHyperparameters
+from .training import SimCLRTrainingHyperparameters
 from .distillation import DistillationHyperparameters
