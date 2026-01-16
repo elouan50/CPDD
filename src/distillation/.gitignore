@@ -1,0 +1,5 @@
+venv/
+data/
+results/
+pre_trained_model/
+__pycache__/

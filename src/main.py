@@ -51,9 +51,6 @@ class CPDD(BaseModel):
     def distillation(self):
         updated_distilled_dataset = self.dataset
         
-        # embed
-        # compute similarity
-        # compare 
         
         return updated_distilled_dataset
         
