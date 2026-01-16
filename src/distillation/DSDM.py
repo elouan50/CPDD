@@ -1,4 +1,7 @@
 import os
+from pydantic import BaseModel
+from typing import Annotated, Literal
+from tqdm import tqdm
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,7 +18,10 @@ from misc.augment import DiffAug
 from misc import utils
 from math import ceil
 import random
-
+import shutil
+from misc.utils import Logger
+import torch.backends.cudnn as cudnn
+import json
 
 class Synthesizer():
     """Condensed data class
@@ -333,6 +339,26 @@ def load_resized_data(args):
     return train_dataset, val_loader
 
 
+def tune_lr_img(args, lr_img):
+    # Use mse loss for 32x32 img and ConvNet
+    ipc_base = 10
+    if args.dataset == 'imagenet':
+        imsize_base = 224
+    elif args.dataset == 'speech':
+        imsize_base = 64
+    elif args.dataset == 'mnist':
+        imsize_base = 28
+    else:
+        imsize_base = 32
+
+    param_ratio = (args.ipc / ipc_base)
+    if args.size > 0:
+        param_ratio *= (args.size / imsize_base)**2
+
+    lr_img = lr_img * param_ratio
+    return lr_img
+
+
 def remove_aug(augtype, remove_aug):
     aug_list = []
     for aug in augtype.split("_"):
@@ -444,7 +470,7 @@ def condense(args, logger, device='cuda'):
 
     # Define syn dataset
     synset = Synthesizer(args, nclass, nch, hs, ws)
-    synset.init(loader_real, init_type=args.init)
+    synset.init(loader_real, init_type=args.init_data)
     save_img(os.path.join(args.save_dir, 'init.png'),
              synset.data,
              unnormalize=False,
@@ -556,29 +582,260 @@ def condense(args, logger, device='cuda'):
                 logger(
                     "->->->->->->->->->->->->-> Best Result: {:.1f}".format(best_acc))
 
+class Distillation(BaseModel):
+    # Dataset
+    dataset: Annotated[Literal["mnist", "fashion", "svhn", "cifar10", "cifar100"], "dataset (options: mnist, fashion, svhn, cifar10, cifar100)"] = 'cifar10'
+    data_dir: Annotated[str, "directory that containing dataset"] = './data'
+    imagenet_dir: Annotated[str, "path to imagenet dataset"] = '/distillation/ssd_data/imagenet/'
+    nclass: Annotated[int, "number of classes in training dataset"] = 10
+    dseed: Annotated[int, "seed for class sampling"] = 0
+    size: Annotated[int, "spatial size of image"] = 224
+    phase: Annotated[int, "index for multi-processing"] = -1
+    nclass_sub: Annotated[int, "number of classes for each process"] = -1
+    load_memory: Annotated[bool, "load training images on the memory"] = True
+    
+    # Network
+    net_type: Annotated[Literal["convnet", "resnet", "resnet_ap"], "network type: resnet, resnet_ap, convnet"] = 'convnet'
+    norm_type: Annotated[Literal["batch", "instance", "sn", "none"], "normalization type"] = 'instance'
+    depth: Annotated[int, "depth of the network"] = 10
+    width: Annotated[float, "width of the network"] = 1.0
+    
+    # Training
+    pretrained_model_number: Annotated[int, "number of pre-trained models"] = 10
+    pretrained_epochs: Annotated[int, "number of pre-trained epochs"] = 20
+    batch_size: Annotated[int, "mini-batch size for training"] = 64
+    lr: Annotated[float, "initial learning rate"] = 0.01
+    momentum: Annotated[float, "momentum"] = 0.9
+    weight_decay: Annotated[float, "weight decay"] = 5e-4
+    seed: Annotated[int, "random seed for training"] = 0
+    pretrained: Annotated[bool, "use pretrained model"] = False
+    save_pretrain_dir: Annotated[str, "directory that saving pre trained model"] = './distillation/pre_trained_model'
+    
+    # Mixup
+    mixup: Annotated[Literal["vanilla", "cut"], "mixup choice for evaluation"] = 'cut'
+    mixup_net: Annotated[Literal["vanilla", "cut"], "mixup choice for training networks in condensation stage"] = 'cut'
+    beta: Annotated[float, "mixup beta distribution"] = 1.0
+    mix_p: Annotated[float, "mixup probability"] = 0.5
+    
+    # Logging
+    print_freq: Annotated[int, "print frequency"] = 10
+    verbose: Annotated[bool, "to print the status at every iteration"] = False
+    workers: Annotated[int, "number of data loading workers"] = 8
+    save_ckpt: Annotated[bool, "save checkpoint"] = False
+    tag: Annotated[str, "name of experiment"] = ''
+    test: Annotated[bool, "for debugging, do not save results"] = False
+    time: Annotated[bool, "measuring time for each step"] = False
+    
+    # Condense
+    cov_weight: Annotated[float, "semantic weight"] = 50.0
+    h_p_weight: Annotated[float, "historical prototype weight"] = 0.2
+    smooth_factor: Annotated[float, "smoothing factor"] = 0.99
+    epochs: Annotated[int, "number of test epochs"] = 1500
+    ipc: Annotated[int, "number of condensed data per class"] = -1
+    factor: Annotated[int, "multi-formation factor (1 for IDC-I)"] = 1
+    decode_type: Annotated[Literal["single", "multi", "bound"], "multi-formation type"] = 'single'
+    init_data: Annotated[Literal["random", "noise", "mix"], "condensed data initialization type"] = 'random'
+    aug_type: Annotated[str, "augmentation strategy for condensation matching objective"] = 'color_crop_cutout'
+    
+    # Matching objective
+    match: Annotated[Literal["feat", "grad", "semantic"], "feature or gradient matching"] = 'grad'
+    metric: Annotated[Literal["mse", "l1", "l1_mean", "l2", "cos"], "matching objective"] = 'l1'
+    bias: Annotated[bool, "match bias or not"] = False
+    fc: Annotated[bool, "match fc layer or not"] = False
+    f_idx: Annotated[str, "feature matching layer (comma separation)"] = '4'
+    
+    # Optimization
+    niter: Annotated[int, "number of outer iteration"] = 10000
+    smooth_iter: Annotated[int, "number of starting smooth iteration"] = 2000
+    evaluate_iter: Annotated[int, "number of outer iteration evaluating the performance of distilled data"] = 100
+    batch_real: Annotated[int, "batch size of real training data used for matching"] = 256
+    batch_syn_max: Annotated[int, "maximum number of synthetic data used for each matching"] = 256
+    lr_img: Annotated[float, "condensed data learning rate"] = 5e-3
+    mom_img: Annotated[float, "condensed data momentum"] = 0.5
+    reproduce: Annotated[bool, "for reproduce our setting"] = False
+    
+    # Test
+    slct_type: Annotated[str, "selection type"] = 'DSDM'
+    repeat: Annotated[int, "number of test repetition"] = 1
+    dsa: Annotated[bool, "use DSA augmentation for evaluation or not"] = True
+    dsa_strategy: Annotated[str, "DSA strategy"] = 'color_crop_cutout_flip_scale_rotate'
+    rrc: Annotated[bool, "use random resize crop for ImageNet"] = True
+    same_compute: Annotated[bool, "match evaluation training steps for IDC"] = False
+    name: Annotated[str, "name of the test data folder"] = ''
+    
+    # Derived attributes
+    datatag: Annotated[str, "dataset tag"] = ''
+    modeltag: Annotated[str, "model tag"] = ''
+    save_dir: Annotated[str, "directory that saving results"] = ''
+    epoch_print_freq: Annotated[int, "print frequency during evaluation"] = 1
+    idx_from: Annotated[int, "feature matching from layer"] = 0
+    idx_to: Annotated[int, "feature matching to layer"] = -1
+    augment: Annotated[bool, "use augmentation for evaluation"] = True
+    nch: Annotated[int, "number of channels in image"] = 3
+    
+    def init(self):
+        """Apply dataset-specific configurations and derive attributes"""
+
+        # Dataset-specific configurations
+        if self.dataset[:5] == 'cifar':
+            self.size = 32
+            self.mix_p = 0.5
+            self.dsa = True
+            if self.dataset == 'cifar10':
+                self.nclass = 10
+            elif self.dataset == 'cifar100':
+                self.nclass = 100
+        
+        elif self.dataset == 'svhn':
+            self.size = 32
+            self.nclass = 10
+            self.mix_p = 0.5
+            self.dsa = True
+            self.dsa_strategy = remove_aug(self.dsa_strategy, 'flip')
+        
+        elif self.dataset[:5] == 'mnist':
+            self.nclass = 10
+            self.size = 28
+            self.nch = 1
+            self.mix_p = 0.5
+            self.dsa = True
+            self.dsa_strategy = remove_aug(self.dsa_strategy, 'flip')
+        
+        elif self.dataset == 'fashion':
+            self.nclass = 10
+            self.size = 28
+            self.nch = 1
+            self.mix_p = 0.5
+            self.dsa = True
+        
+        elif self.dataset == 'speech':
+            self.nch = 1
+            self.size = 64
+            if self.net_type == 'convnet':
+                self.depth = 4
+            self.nclass = 8
+            self.mixup = 'vanilla'
+            self.mixup_net = 'vanilla'
+            self.dsa = False
+        
+        self.datatag = f'{self.dataset}'
+        
+        # Network-specific configurations
+        if self.net_type == 'convnet':
+            if self.depth > 4:
+                self.depth = 3
+            self.f_idx = str(self.depth - 1)
+        
+        self.modeltag = f'{self.net_type}{self.depth}'
+        if self.net_type == 'resnet_ap':
+            self.modeltag = f'resnet{self.depth}ap'
+        if self.net_type == 'convnet':
+            self.modeltag = f'conv{self.depth}'
+        if self.norm_type == 'instance':
+            self.modeltag += 'in'
+        if self.width != 1.0:
+            self.modeltag += f'_w{self.width}'
+        
+        # Default initialization for multi-formation
+        if self.factor > 1:
+            self.init_data = 'mix'
+        
+        # Build experiment tag
+        if self.tag != '':
+            self.tag = f'_{self.tag}'
+        
+        if self.ipc > 0:
+            if self.slct_type == 'random':
+                self.tag += f'_rand{self.ipc}'
+            
+            elif self.slct_type == 'DSDM':
+                self.tag += f'_semantic'
+                f_list = [int(s) for s in self.f_idx.split(',')]
+                if len(f_list) == 1:
+                    f_list.append(-1)
+                self.idx_from, self.idx_to = f_list
+                self.metric = 'mse'
+                
+                self.tag += f'_{self.metric}'
+                if self.mixup_net == 'cut':
+                    self.tag += f'_cut'
+                if self.lr != 0.01:
+                    self.tag += f'_nlr{self.lr}'
+                if self.weight_decay != 5e-4:
+                    self.tag += f'_wd{self.weight_decay}'
+                
+                if self.factor > 0:
+                    self.tag += f'_factor{self.factor}'
+                    if self.decode_type != 'single':
+                        self.tag += f'_{self.decode_type}'
+                if self.aug_type != 'color_crop_cutout':
+                    self.tag += f'_{self.aug_type}'
+                
+                self.tag += f'_lr{self.lr_img}'
+                self.lr_img = tune_lr_img(self, self.lr_img)
+                if self.momentum != 0.9:
+                    self.tag += f'_mom{self.momentum}'
+                if self.batch_real != 64:
+                    self.tag += f'_b_real{self.batch_real}'
+                if self.batch_syn_max != 128:
+                    self.tag += f'_synmax{self.batch_syn_max}'
+                
+                self.tag += f'_{self.init_data}'
+                self.tag += f'_ipc{self.ipc}'
+                
+                if self.nclass_sub > 0:
+                    self.tag += f'_{self.nclass_sub}'
+                if self.phase >= 0:
+                    self.tag += f'_phase{self.phase}'
+        else:
+            if self.mixup != 'vanilla':
+                self.tag += f'_{self.mixup}'
+        
+        # Result folder name
+        if self.test:
+            self.save_dir = './distillation/results/test'
+        else:
+            self.save_dir = f"./distillation/results/{self.datatag}/{self.modeltag}{self.tag}"
+        
+        # Evaluation setting
+        if self.ipc > 0:
+            self.epochs = 1500
+            self.epoch_print_freq = self.epochs
+        else:
+            self.epoch_print_freq = 1
+        
+        # Augmentation setting
+        if self.mixup == 'cut':
+            self.dsa_strategy = remove_aug(self.dsa_strategy, 'cutout')
+        if self.dsa:
+            self.augment = False
+        else:
+            self.augment = True
+        
+    def main(self):
+        """Main function to run distillation"""
+        self.init()
+        
+        assert self.ipc > 0
+
+        cudnn.benchmark = True
+        if self.seed > 0:
+            np.random.seed(self.seed)
+            torch.manual_seed(self.seed)
+            torch.cuda.manual_seed(self.seed)
+
+        os.makedirs(self.save_dir, exist_ok=True)
+        cur_file = os.path.join(os.getcwd(), __file__)
+        shutil.copy(cur_file, self.save_dir)
+
+        logger = Logger(self.save_dir)
+        logger(f"Save dir: {self.save_dir}")
+        with open(os.path.join(self.save_dir, 'args.txt'), 'w') as f:
+            json.dump(self.model_dump(mode='json', warnings=False), f, indent=2)
+
+        condense(self, logger)
 
 if __name__ == '__main__':
-    import shutil
-    from misc.utils import Logger
-    from argument import args
-    import torch.backends.cudnn as cudnn
-    import json
 
-    assert args.ipc > 0
-
-    cudnn.benchmark = True
-    if args.seed > 0:
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed(args.seed)
-
-    os.makedirs(args.save_dir, exist_ok=True)
-    cur_file = os.path.join(os.getcwd(), __file__)
-    shutil.copy(cur_file, args.save_dir)
-
-    logger = Logger(args.save_dir)
-    logger(f"Save dir: {args.save_dir}")
-    with open(os.path.join(args.save_dir, 'args.txt'), 'w') as f:
-        json.dump(args.__dict__, f, indent=2)
-
-    condense(args, logger)
+    distillation = Distillation(ipc=1)
+    distillation.main()

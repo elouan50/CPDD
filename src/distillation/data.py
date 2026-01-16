@@ -667,33 +667,33 @@ def save_img(save_dir, img, unnormalize=True, max_num=200, size=64, nrow=10, dat
     save_image(img.cpu(), save_dir, nrow=nrow)
 
 
-if __name__ == '__main__':
-    from argument import args
+# if __name__ == '__main__':
+#     from argument import args
 
-    traindir = os.path.join(args.imagenet_dir, 'train')
-    train_transform, test_transform = transform_imagenet(augment=False,
-                                                         from_tensor=False,
-                                                         size=args.size,
-                                                         rrc=False,
-                                                         normalize=False)
-    train_dataset = ImageFolder(traindir,
-                                train_transform,
-                                nclass=args.nclass,
-                                seed=args.dseed,
-                                slct_type=args.slct_type,
-                                ipc=args.ipc,
-                                load_memory=args.load_memory)
-    loader = ClassDataLoader(train_dataset,
-                             batch_size=args.batch_real,
-                             num_workers=args.workers,
-                             shuffle=True,
-                             pin_memory=True,
-                             drop_last=True)
-    data = []
-    for c in range(args.nclass):
-        img, _ = loader.class_sample(c, args.ipc)
-        data.append(img)
-    data = torch.cat(data)
-    print(data.shape)
-    torch.save(data, "./results/samples/init/data.pt")
-    print("image saved!")
+#     traindir = os.path.join(args.imagenet_dir, 'train')
+#     train_transform, test_transform = transform_imagenet(augment=False,
+#                                                          from_tensor=False,
+#                                                          size=args.size,
+#                                                          rrc=False,
+#                                                          normalize=False)
+#     train_dataset = ImageFolder(traindir,
+#                                 train_transform,
+#                                 nclass=args.nclass,
+#                                 seed=args.dseed,
+#                                 slct_type=args.slct_type,
+#                                 ipc=args.ipc,
+#                                 load_memory=args.load_memory)
+#     loader = ClassDataLoader(train_dataset,
+#                              batch_size=args.batch_real,
+#                              num_workers=args.workers,
+#                              shuffle=True,
+#                              pin_memory=True,
+#                              drop_last=True)
+#     data = []
+#     for c in range(args.nclass):
+#         img, _ = loader.class_sample(c, args.ipc)
+#         data.append(img)
+#     data = torch.cat(data)
+#     print(data.shape)
+#     torch.save(data, "./results/samples/init/data.pt")
+#     print("image saved!")

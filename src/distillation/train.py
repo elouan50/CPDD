@@ -338,12 +338,12 @@ def save_checkpoint(save_dir, state, is_best):
     print("checkpoint saved! ", ckpt_path)
 
 
-if __name__ == '__main__':
-    from misc.utils import Logger
-    from argument import args
+# if __name__ == '__main__':
+#     from misc.utils import Logger
+#     from argument import args
 
-    os.makedirs(args.save_dir, exist_ok=True)
-    logger = Logger(args.save_dir)
-    logger(f"Save dir: {args.save_dir}")
+#     os.makedirs(args.save_dir, exist_ok=True)
+#     logger = Logger(args.save_dir)
+#     logger(f"Save dir: {args.save_dir}")
 
-    main(args, logger, args.repeat)
+#     main(args, logger, args.repeat)

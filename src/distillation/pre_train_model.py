@@ -105,45 +105,45 @@ def diffaug(args, device='cuda'):
 
 
 
-if __name__ == '__main__':
-    from argument import args
-    import torch.backends.cudnn as cudnn
-    cudnn.benchmark = True
-    if args.seed > 0:
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed(args.seed)
+# if __name__ == '__main__':
+#     from argument import args
+#     import torch.backends.cudnn as cudnn
+#     cudnn.benchmark = True
+#     if args.seed > 0:
+#         np.random.seed(args.seed)
+#         torch.manual_seed(args.seed)
+#         torch.cuda.manual_seed(args.seed)
 
-    os.makedirs(args.save_pretrain_dir, exist_ok=True)
+#     os.makedirs(args.save_pretrain_dir, exist_ok=True)
 
 
-    trainset, val_loader = load_resized_data(args)
-    if args.load_memory:
-        loader_real = ClassMemDataLoader(trainset, batch_size=args.batch_real)
-    else:
-        loader_real = ClassDataLoader(trainset,
-                                      batch_size=args.batch_real,
-                                      num_workers=args.workers,
-                                      shuffle=True,
-                                      pin_memory=True,
-                                      drop_last=True)
-    nclass = trainset.nclass
-    aug, aug_rand = diffaug(args)
-    for it in range(args.pretrained_model_number):
+#     trainset, val_loader = load_resized_data(args)
+#     if args.load_memory:
+#         loader_real = ClassMemDataLoader(trainset, batch_size=args.batch_real)
+#     else:
+#         loader_real = ClassDataLoader(trainset,
+#                                       batch_size=args.batch_real,
+#                                       num_workers=args.workers,
+#                                       shuffle=True,
+#                                       pin_memory=True,
+#                                       drop_last=True)
+#     nclass = trainset.nclass
+#     aug, aug_rand = diffaug(args)
+#     for it in range(args.pretrained_model_number):
     
-        model = define_model(args, nclass).to('cuda')
-        optim_net = optim.SGD(model.parameters(),
-                                args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
-        criterion = nn.CrossEntropyLoss()
-        for _ in range(args.pretrained_epochs):
-            train_epoch(args,
-                        loader_real,
-                        model,
-                        criterion,
-                        optim_net,
-                        aug=aug_rand,
-                        mixup=args.mixup_net)
-        model = model.to('cpu')
-        torch.save(model.state_dict(), f'./{args.save_pretrain_dir}/{args.dataset}_model_{it}.pth')
+#         model = define_model(args, nclass).to('cuda')
+#         optim_net = optim.SGD(model.parameters(),
+#                                 args.lr,
+#                                 momentum=args.momentum,
+#                                 weight_decay=args.weight_decay)
+#         criterion = nn.CrossEntropyLoss()
+#         for _ in range(args.pretrained_epochs):
+#             train_epoch(args,
+#                         loader_real,
+#                         model,
+#                         criterion,
+#                         optim_net,
+#                         aug=aug_rand,
+#                         mixup=args.mixup_net)
+#         model = model.to('cpu')
+#         torch.save(model.state_dict(), f'./{args.save_pretrain_dir}/{args.dataset}_model_{it}.pth')

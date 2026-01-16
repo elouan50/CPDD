@@ -308,38 +308,38 @@ def test_data(args,
     return np.mean(best_acc_l)
 
 
-if __name__ == '__main__':
-    from argument import args
-    import torch.backends.cudnn as cudnn
-    import numpy as np
-    cudnn.benchmark = True
+# if __name__ == '__main__':
+#     from argument import args
+#     import torch.backends.cudnn as cudnn
+#     import numpy as np
+#     cudnn.benchmark = True
 
-    if args.same_compute and args.factor > 1:
-        args.epochs = int(args.epochs / args.factor**2)
+#     if args.same_compute and args.factor > 1:
+#         args.epochs = int(args.epochs / args.factor**2)
 
-    path_list = return_data_path(args)
-    for p in path_list:
-        args.save_dir = os.path.join(DATA_PATH, p)
+#     path_list = return_data_path(args)
+#     for p in path_list:
+#         args.save_dir = os.path.join(DATA_PATH, p)
  
-        train_dataset, val_dataset = load_data_path(args)
+#         train_dataset, val_dataset = load_data_path(args)
 
-        train_loader = MultiEpochsDataLoader(train_dataset,
-                                             batch_size=args.batch_size,
-                                             shuffle=True,
-                                             num_workers=args.workers if args.augment else 0,
-                                             persistent_workers=args.augment > 0)
-        val_loader = MultiEpochsDataLoader(val_dataset,
-                                           batch_size=args.batch_size // 2,
-                                           shuffle=False,
-                                           persistent_workers=True,
-                                           num_workers=4)
+#         train_loader = MultiEpochsDataLoader(train_dataset,
+#                                              batch_size=args.batch_size,
+#                                              shuffle=True,
+#                                              num_workers=args.workers if args.augment else 0,
+#                                              persistent_workers=args.augment > 0)
+#         val_loader = MultiEpochsDataLoader(val_dataset,
+#                                            batch_size=args.batch_size // 2,
+#                                            shuffle=False,
+#                                            persistent_workers=True,
+#                                            num_workers=4)
 
-        test_data(args, train_loader, val_loader, repeat=args.repeat, test_resnet=False)
-        if args.dataset[:5] == 'cifar':
-            test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=resnet10_bn)
-            if (not args.same_compute) and (args.ipc >= 50 and args.factor > 1):
-                args.epochs = 400
-            test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=densenet)
-        elif args.dataset == 'imagenet':
-            test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=resnet18_bn)
-            test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=efficientnet)
+#         test_data(args, train_loader, val_loader, repeat=args.repeat, test_resnet=False)
+#         if args.dataset[:5] == 'cifar':
+#             test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=resnet10_bn)
+#             if (not args.same_compute) and (args.ipc >= 50 and args.factor > 1):
+#                 args.epochs = 400
+#             test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=densenet)
+#         elif args.dataset == 'imagenet':
+#             test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=resnet18_bn)
+#             test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=efficientnet)
