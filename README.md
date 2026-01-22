@@ -36,3 +36,7 @@ The first command will create a folder `venv` which contains the environment fil
 [1]: Chen _et al._, 2020. A simple framework for contrastive learning of visual representations. In Proceedings of the 37th International Conference on Machine Learning (ICML'20), Vol. 119. JMLR.org, Article 149, 1597–1607. [https://proceedings.mlr.press/v119/chen20j/chen20j.pdf](https://proceedings.mlr.press/v119/chen20j/chen20j.pdf)
 
 [2]: Joshi _et al._, 2025. Dataset Distillation via Knowledge Distillation: Towards Efficient Self-Supervised Pre-Training of Deep Networks. In The Thirteenth International Conference on Learning Representations. [http://arxiv.org/abs/2410.02116](http://arxiv.org/abs/2410.02116)
+
+## Acknowledgements
+
+Our code in the folders `src/distillation` and `src/simclr` is widely inspired from other repositories, listed in the corresponding `README` files. We thank them for their excellent work.

@@ -24,7 +24,7 @@ model_names = sorted(name for name in models.__dict__
 
 
 class SimCLR(BaseModel):
-    data: Annotated[str, "path to dataset"] = './datasets'
+    data: Annotated[str, "path to dataset"] = './data'
     dataset_name: Annotated[Literal["stl10", "cifar10"], "dataset name"] = 'cifar10'
     arch: Annotated[str, model_names] = 'resnet18'
     workers: Annotated[int, "number of workers"] = 12
@@ -60,7 +60,7 @@ class SimCLR(BaseModel):
             self.device = 'cpu'
             self.gpu_index = -1
         
-        dataset = ContrastiveLearningDataset(self.data)
+        dataset = ContrastiveLearningDataset(f"{self.data}/{self.dataset_name}")
         
         train_dataset = dataset.get_dataset(self.dataset_name, self.n_views)
         

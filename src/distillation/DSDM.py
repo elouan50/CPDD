@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Annotated, Literal
 from tqdm import tqdm
 import numpy as np
+import pickle
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -448,7 +449,18 @@ def matchloss(args, img_real, img_syn, model, h_p=None):
 
     return loss
 
+def pickle_data(args, synset):
+    """Save condensed data as a pickle file
+    """
+    images = synset.data.detach().cpu()
 
+    batch = {
+        b'data': images.numpy().reshape(len(images), -1),
+        b'batch_label': f'distilled_batch_{args.cpdd_iter}'
+    }
+
+    with open(os.path.join(args.save_dir, f"distilled_data_batch_{args.cpdd_iter}"), "wb") as f:
+        pickle.dump(batch, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def condense(args, logger, device='cuda'):
@@ -471,17 +483,17 @@ def condense(args, logger, device='cuda'):
     # Define syn dataset
     synset = Synthesizer(args, nclass, nch, hs, ws)
     synset.init(loader_real, init_type=args.init_data)
-    save_img(os.path.join(args.save_dir, 'init.png'),
-             synset.data,
-             unnormalize=False,
-             dataname=args.dataset)
+    # save_img(os.path.join(args.save_dir, 'init.png'),
+    #          synset.data,
+    #          unnormalize=False,
+    #          dataname=args.dataset)
 
     # Define augmentation function
     aug, aug_rand = diffaug(args)
-    save_img(os.path.join(args.save_dir, f'aug.png'),
-             aug(synset.sample(0, max_size=args.batch_syn_max)[0]),
-             unnormalize=True,
-             dataname=args.dataset)
+    # save_img(os.path.join(args.save_dir, f'aug.png'),
+    #          aug(synset.sample(0, max_size=args.batch_syn_max)[0]),
+    #          unnormalize=True,
+    #          dataname=args.dataset)
 
     # if not args.test:
     #     synset.test(args, val_loader, logger, bench=False)
@@ -571,14 +583,17 @@ def condense(args, logger, device='cuda'):
                 conv_result = synset.test(args, val_loader, logger)
                 if conv_result > best_acc:
                     best_acc = conv_result
-                    torch.save(
-                        [synset.data.detach().cpu(), synset.targets.cpu()],
-                        os.path.join(args.save_dir, f'data_best.pt'))
-                    print("best img and data updated!")
-                    save_img(os.path.join(args.save_dir, f'img{it+1}.png'),
-                             synset.data,
-                             unnormalize=False,
-                             dataname=args.dataset)
+                    
+                    pickle_data(args, synset)
+                    # torch.save(
+                    #     [synset.data.detach().cpu(), synset.targets.cpu()],
+                    #     os.path.join(args.save_dir, f'data_best.pt'))
+                    # print("best img and data updated!")
+                    # save_img(os.path.join(args.save_dir, f'img{it+1}.png'),
+                    #          synset.data,
+                    #          unnormalize=False,
+                    #          dataname=args.dataset)
+                logger(synset.data.shape)
                 logger(
                     "->->->->->->->->->->->->-> Best Result: {:.1f}".format(best_acc))
 
@@ -618,6 +633,7 @@ class Distillation(BaseModel):
     mix_p: Annotated[float, "mixup probability"] = 0.5
     
     # Logging
+    cpdd_iter: Annotated[int, "checkpoint iteration for distilled data"] = 10000
     print_freq: Annotated[int, "print frequency"] = 10
     verbose: Annotated[bool, "to print the status at every iteration"] = False
     workers: Annotated[int, "number of data loading workers"] = 8
@@ -795,7 +811,7 @@ class Distillation(BaseModel):
         if self.test:
             self.save_dir = './distillation/results/test'
         else:
-            self.save_dir = f"./distillation/results/{self.datatag}/{self.modeltag}{self.tag}"
+            self.save_dir = f'./data/{self.dataset}' # f"./distillation/results/{self.datatag}/{self.modeltag}{self.tag}"
         
         # Evaluation setting
         if self.ipc > 0:
@@ -825,17 +841,13 @@ class Distillation(BaseModel):
             torch.cuda.manual_seed(self.seed)
 
         os.makedirs(self.save_dir, exist_ok=True)
-        cur_file = os.path.join(os.getcwd(), __file__)
-        shutil.copy(cur_file, self.save_dir)
 
         logger = Logger(self.save_dir)
         logger(f"Save dir: {self.save_dir}")
-        with open(os.path.join(self.save_dir, 'args.txt'), 'w') as f:
-            json.dump(self.model_dump(mode='json', warnings=False), f, indent=2)
 
         condense(self, logger)
 
 if __name__ == '__main__':
 
-    distillation = Distillation(ipc=1)
+    distillation = Distillation(ipc=10, factor=2, dataset='cifar10', niter=1000)
     distillation.main()

@@ -2,15 +2,14 @@ from typing import Annotated, Literal
 from pydantic import BaseModel
 from tqdm import trange
 from time import sleep
+import os
 
 import matplotlib.pyplot as plt
-import torch
+from torchvision import datasets
 import lightly_train
 
 from utils import SimCLRTrainingHyperparameters, DistillationHyperparameters
-from losses import DistillationLoss, InfoNCELoss
 from models import ResNetSimCLR
-from datasets import load_cifar10
 from simclr.simclr import SimCLR
 
 cifar10_labels = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
@@ -21,7 +20,6 @@ class CPDD(BaseModel):
     simclr_training_hyperparameters:Annotated[SimCLRTrainingHyperparameters, "Training hyperparameters."]   = SimCLRTrainingHyperparameters()
     distillation_hyperparameters:   Annotated[DistillationHyperparameters, "Distillation hyperparameters."] = DistillationHyperparameters()
     cpdd_epochs:                    Annotated[int, "Number of epochs for CPDD."]                            = 10
-    dataset:                        Annotated[object, "The dataset instance."]                              = None
     distilled_dataset:              Annotated[object, "The distilled dataset instance."]                    = None
     model:                          Annotated[object, "The model instance."]                                = None
     
@@ -30,7 +28,9 @@ class CPDD(BaseModel):
         
         # Initialize the dataset
         if self.dataset_name == "cifar10":
-            self.dataset = load_cifar10()[0]
+            os.rmdir('./data/cifar10/', ignore_errors=True)
+            dataset = datasets.CIFAR10('./data/cifar10/', train=True, download=True)
+            
         else:
             raise ValueError(f"Unsupported dataset: {self.dataset_name}")
         
@@ -49,7 +49,7 @@ class CPDD(BaseModel):
         print("-----------------------------------")
 
     def distillation(self):
-        updated_distilled_dataset = self.dataset
+        updated_distilled_dataset = None
         
         
         return updated_distilled_dataset
@@ -90,7 +90,9 @@ class CPDD(BaseModel):
         print("Starting CPDD...")
         sleep(1)
         
-        for epoch in trange(self.cpdd_epochs):
+        for epoch in range(self.cpdd_epochs):
+            print(f"--- CPDD Epoch {epoch+1}/{self.cpdd_epochs} ---")
+            
             # Distillation phase
             self.distilled_dataset = self.distillation()
             
@@ -100,7 +102,7 @@ class CPDD(BaseModel):
         
         print("Done.")
         
-        return self.dataset
+        return None
 
 
 if __name__ == "__main__":

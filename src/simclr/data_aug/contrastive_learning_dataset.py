@@ -25,8 +25,7 @@ class ContrastiveLearningDataset:
         valid_datasets = {'cifar10': lambda: datasets.CIFAR10(self.root_folder, train=True,
                                                               transform=ContrastiveLearningViewGenerator(
                                                                   self.get_simclr_pipeline_transform(32),
-                                                                  n_views),
-                                                              download=True),
+                                                                  n_views)),
 
                           'stl10': lambda: datasets.STL10(self.root_folder, split='unlabeled',
                                                           transform=ContrastiveLearningViewGenerator(
