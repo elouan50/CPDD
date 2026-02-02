@@ -6,7 +6,6 @@ import os
 
 import matplotlib.pyplot as plt
 from torchvision import datasets
-import lightly_train
 
 from utils import SimCLRTrainingHyperparameters, DistillationHyperparameters
 from models import ResNetSimCLR
@@ -55,19 +54,6 @@ class CPDD(BaseModel):
         return updated_distilled_dataset
         
     def training(self):
-        ## Use lightly_train to pretrain the model with SimCLR
-        
-        # lightly_train.pretrain(
-        #     out="crash_test",
-        #     data="src/coco128_unlabeled",
-        #     model="torchvision/resnet18",
-        #     method="simclr",
-        #     epochs=1,
-        #     batch_size=256,
-        #     overwrite=True,
-        # )
-        
-        ## Or use the imported implementation of SimCLR from src/simclr/simclr.py
         simclr = SimCLR(
             data='./datasets',
             dataset_name=self.dataset_name,
