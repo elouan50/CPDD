@@ -15,7 +15,6 @@ import models.densenet_cifar as DN
 from data import load_data, MEANS, STDS
 from misc.utils import random_indices, rand_bbox, AverageMeter, accuracy, get_time, Plotter
 from misc.augment import DiffAug
-from efficientnet_pytorch import EfficientNet
 import time
 import warnings
 
@@ -53,8 +52,6 @@ def define_model(args, nclass, logger=None, size=None):
                               norm_type=args.norm_type,
                               size=size,
                               nch=args.nch)
-    elif args.net_type == 'efficient':
-        model = EfficientNet.from_name('efficientnet-b0', num_classes=nclass)
     elif args.net_type == 'densenet':
         model = DN.densenet_cifar(nclass)
     elif args.net_type == 'convnet':

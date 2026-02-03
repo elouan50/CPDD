@@ -1,11 +1,7 @@
-efficientnet_pytorch
 matplotlib
 numpy
 pillow
 pydantic
-pytorch-ignite
-pytorch-lightning
-torch
-torchvision
 tqdm
 wandb
+# see readme for specific versions of torch and torchvision

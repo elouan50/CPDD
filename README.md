@@ -13,10 +13,12 @@ You can find here a description of the structure of the project.
 │   ├── dinov3_task.py
 │   └── image.jpg
 ├── src                 # Project core
-│   ├── augmentations   # Set of data augmentations
 │   ├── datasets        # Datasets for training
+│   ├── distillation    # Distillation framework
 │   ├── losses          # Loss functions
 │   ├── models          # Model architectures for teacher and client
+│   ├── simclr          # SimCLR framework
+│   ├── utils           # Useful functions
 │   └── main.py
 ├── README.md
 └── requirements.txt
@@ -28,8 +30,19 @@ _Recommanded:_ use a Python virtual environment. To set up the environment, use 
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130 # See next section
 ```
 The first command will create a folder `venv` which contains the environment files. The second line activates the virtual environment (execute this one each time you reopen the project). The third line installs the package dependencies. To exit the virtual environment, use the `deactivate` command.
+
+## CUDA (Windows)
+
+The project is designed to use CUDA for GPU-accelerated processing. See following the requirements.
+
+### Requirements
+- NVIDIA GPU with recent driver (`nvidia-smi` works)
+- **Python >= 3.11.x (64-bit)**
+- PyTorch: install via the tutorial: [https://pytorch.org/get-started/locally/](https://pytorch.org/get-started/locally/). Use a command adapted to your OS and your CUDA driver version.
+
 
 ## References
 

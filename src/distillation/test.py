@@ -11,7 +11,6 @@ from data import TensorDataset, MultiEpochsDataLoader
 from data import save_img, transform_cifar, transform_svhn, transform_mnist, transform_fashion
 import models.resnet as RN
 import models.densenet_cifar as DN
-from efficientnet_pytorch import EfficientNet
 
 DATA_PATH = "./results"
 
@@ -63,17 +62,6 @@ def densenet(args, nclass, logger=None):
 
     if logger is not None:
         logger(f"=> creating DenseNet")
-    return model
-
-
-def efficientnet(args, nclass, logger=None):
-    if args.dataset == 'imagenet':
-        model = EfficientNet.from_name('efficientnet-b0', num_classes=nclass)
-    else:
-        raise AssertionError("Not implemented!")
-
-    if logger is not None:
-        logger(f"=> creating EfficientNet")
     return model
 
 
@@ -342,4 +330,3 @@ def test_data(args,
 #             test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=densenet)
 #         elif args.dataset == 'imagenet':
 #             test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=resnet18_bn)
-#             test_data(args, train_loader, val_loader, repeat=args.repeat, model_fn=efficientnet)
